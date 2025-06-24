@@ -48,7 +48,7 @@ exports.handleGoogleAuth = async (idToken) => {
       if (existingUserByEmail) {
         // User exists with email but no Google ID, link the accounts
         await userModel.linkGoogleAccount(existingUserByEmail.id, googleUser.googleId);
-        user = await userModel.findByGoogleId(googleUser.googleId);
+        user = { ...existingUserByEmail, google_id: googleUser.googleId };
         logger.info(`Linked existing email account to Google: ${googleUser.email}`);
       } else {
         // Create new user with Google auth
@@ -90,21 +90,21 @@ exports.handleGoogleAuth = async (idToken) => {
   }
 };
 
-// Get Google OAuth URL for frontend
-exports.getGoogleAuthUrl = () => {
-  const redirectUri = `${config.FRONTEND_URL}/auth/google/callback`;
-  const scope = 'email profile';
+// // Get Google OAuth URL for frontend
+// exports.getGoogleAuthUrl = () => {
+//   const redirectUri = `${config.FRONTEND_URL}/auth/google/callback`;
+//   const scope = 'email profile';
   
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-    `client_id=${config.GOOGLE_CLIENT_ID}&` +
-    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-    `response_type=code&` +
-    `scope=${encodeURIComponent(scope)}&` +
-    `access_type=offline&` +
-    `prompt=consent`;
+//   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+//     `client_id=${config.GOOGLE_CLIENT_ID}&` +
+//     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+//     `response_type=code&` +
+//     `scope=${encodeURIComponent(scope)}&` +
+//     `access_type=offline&` +
+//     `prompt=consent`;
     
-  return authUrl;
-};
+//   return authUrl;
+// };
 
 // Exchange authorization code for tokens
 exports.exchangeCodeForTokens = async (code) => {

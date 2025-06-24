@@ -19,9 +19,9 @@ const createTransporter = () => {
 exports.sendVerificationEmail = async (email, verificationToken, userName) => {
   try {
     const transporter = createTransporter();
-    
+
     const verificationUrl = `${config.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-    
+
     const mailOptions = {
       from: `"${config.APP_NAME || 'Nox Vision'}" <${config.SMTP_USER}>`,
       to: email,
@@ -84,9 +84,9 @@ exports.sendVerificationEmail = async (email, verificationToken, userName) => {
 exports.sendPasswordResetEmail = async (email, resetToken, userName) => {
   try {
     const transporter = createTransporter();
-    
+
     const resetUrl = `${config.FRONTEND_URL}/reset-password?token=${resetToken}`;
-    
+
     const mailOptions = {
       from: `"${config.APP_NAME || 'Nox Vision'}" <${config.SMTP_USER}>`,
       to: email,
@@ -143,4 +143,70 @@ exports.sendPasswordResetEmail = async (email, resetToken, userName) => {
     logger.error(`Error sending password reset email to ${email}:`, error);
     throw new Error('Failed to send password reset email');
   }
-}; 
+};
+
+
+
+exports.sendOtpToEmail = async (toEmail, otp, purpose = 'Verification') => {
+  try {
+    const transporter = createTransporter();
+    const mailOptions = {
+      from: `"${config.APP_NAME}" <${config.SMTP_USER}>`,
+      to: toEmail,
+      subject: `${purpose} OTP from ${config.APP_NAME}`,
+      html: `
+      
+       
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <div style="background-color: #f8f9fa; padding: 20px; text-align: center;">
+      <h1 style="color: #333; margin: 0;">OTP Verification</h1>
+    </div>
+
+    <div style="padding: 20px; background-color: #ffffff;">
+      <h2 style="color: #333;">Dear User,</h2>
+
+      <p style="color: #666; line-height: 1.6;">
+        Your OTP for <strong>${purpose.toLowerCase()}</strong> is:
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <span style="
+          background-color: #dc3545;
+          color: white;
+          padding: 12px 30px;
+          border-radius: 5px;
+          display: inline-block;
+          font-weight: bold;
+          font-size: 20px;
+          letter-spacing: 4px;
+        ">
+          ${otp}
+        </span>
+      </div>
+
+      <p style="color: #666; line-height: 1.6;">
+        This OTP is valid for 10 minutes. Please do not share it with anyone.
+      </p>
+
+      <p style="color: #666; line-height: 1.6;">
+        Best regards,<br />
+        The ${config.APP_NAME || 'Nox Vision'} Team
+      </p>
+    </div>
+
+    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px;">
+      <p>This is an automated email. Please do not reply to this message.</p>
+    </div>
+  </div>
+
+        `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`OTP email sent: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.error('Failed to send OTP email:', error);
+    throw new Error('Could not send OTP email');
+  }
+}

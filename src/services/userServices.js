@@ -5,7 +5,9 @@ const config = require('../config/env');
 const userModel = require('../models/userModel');
 const emailService = require('./emailService');
 const googleAuthService = require('./googleAuthService');
-const { log } = require('console');
+const logger = require('../utils/logger');
+
+
 
 exports.createUser = async (userData) => {
   // Check if user already exists
@@ -57,7 +59,7 @@ exports.loginUser = async (email, password) => {
   // Find user
   const user = await userModel.findByEmail(email);
   if (!user) {
-    const error = new Error('Invalid credentials');
+    const error = new Error('User not found');
     error.statusCode = 401;
     throw error;
   }
@@ -73,7 +75,7 @@ exports.loginUser = async (email, password) => {
   if (!user.google_id) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      const error = new Error('Invalid credentials');
+      const error = new Error('Password is incorrect');
       error.statusCode = 401;
       throw error;
     }
@@ -97,6 +99,52 @@ exports.loginUser = async (email, password) => {
   return { user, token };
 };
 
+
+exports.verifyOtp = async (email, otpCode) => {
+  const user = await userModel.findByEmail(email);
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const otpRecord = await userModel.findLatestOtp(user.id, otpCode);
+
+  if (!otpRecord) {
+    const error = new Error('Invalid OTP');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (otpRecord.used) {
+    const error = new Error('OTP has already been used');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (new Date() > otpRecord.expires_at) {
+    const error = new Error('OTP has expired');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await userModel.markOtpAsUsed(otpRecord.id);
+  const token = jwt.sign(
+    { id: user.id, email: user.email },
+    config.JWT_SECRET,
+    { expiresIn: config.JWT_EXPIRES_IN || '1h' }
+  );
+
+
+  return {
+    user,
+    token
+  };
+};
+
+
+
+
 // Google authentication
 exports.googleAuth = async (idToken) => {
   try {
@@ -106,26 +154,52 @@ exports.googleAuth = async (idToken) => {
     throw error;
   }
 };
-
-// Get Google OAuth URL
-exports.getGoogleAuthUrl = () => {
-  return googleAuthService.getGoogleAuthUrl();
-};
-
-// Handle Google OAuth callback
-exports.handleGoogleCallback = async (code) => {
-  try {
-    // Exchange code for tokens
-    const tokens = await googleAuthService.exchangeCodeForTokens(code);
-    
-    // Use the ID token to authenticate
-    const result = await googleAuthService.handleGoogleAuth(tokens.id_token);
-    
-    return result;
-  } catch (error) {
+exports.validateEmail = async (email) => {
+  const user = await userModel.findByEmail(email);
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
     throw error;
   }
+  if (!user.password) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP in DB with user.id and expiry
+    await userModel.storeOtp(user.id, otp);
+
+    await emailService.sendOtpToEmail(user.email, otp); // pass email and id
+
+    // Return a special response indicating OTP sent for password setup
+    return {
+      status: true,
+      status_code: 200,
+      password_available: false,
+      message: 'An OTP has been sent to your email to set up your password.',
+      email: user.email
+    };
+  }
+  delete user.password;
+  return {...user,password_available:true};
 };
+// // Get Google OAuth URL
+// exports.getGoogleAuthUrl = () => {
+//   return googleAuthService.getGoogleAuthUrl();
+// };
+
+// // Handle Google OAuth callback
+// exports.handleGoogleCallback = async (code) => {
+//   try {
+//     // Exchange code for tokens
+//     const tokens = await googleAuthService.exchangeCodeForTokens(code);
+    
+//     // Use the ID token to authenticate
+//     const result = await googleAuthService.handleGoogleAuth(tokens.id_token);
+    
+//     return result;
+//   } catch (error) {
+//     throw error;
+//   }
+// };
 
 exports.getUserById = async (userId) => {
   const user = await userModel.findById(userId);
@@ -150,15 +224,7 @@ exports.updateUser = async (userId, userData) => {
     throw error;
   }
 
-  // If email is being updated, check if it's already in use
-  if (userData.email && userData.email !== existingUser.email) {
-    const emailExists = await userModel.findByEmail(userData.email);
-    if (emailExists) {
-      const error = new Error('Email already in use');
-      error.statusCode = 409;
-      throw error;
-    }
-  }
+ 
 
   // Update user
   const updatedUser = await userModel.update(userId, userData);
@@ -171,6 +237,7 @@ exports.updateUser = async (userId, userData) => {
 
 exports.generatePasswordResetToken = async (email) => {
   // Find user
+  console.log(email);
   const user = await userModel.findByEmail(email);
   if (!user) {
     const error = new Error('User with this email does not exist');
@@ -211,7 +278,7 @@ exports.generatePasswordResetToken = async (email) => {
   };
 };
 
-exports.resetPassword = async (token, newPassword) => {
+exports.resetPassword = async (token, password) => {
   // Hash the token to compare with stored hash
   const hashedToken = crypto
     .createHash('sha256')
@@ -229,10 +296,116 @@ exports.resetPassword = async (token, newPassword) => {
 
   // Hash new password
   const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(newPassword, salt);
+  const hashedPassword = await bcrypt.hash(password, salt);
 
   // Update password and clear reset token
   await userModel.updatePassword(user.id, hashedPassword);
+  
+  return true;
+};
+
+// Change password for authenticated users
+exports.changePassword = async (userId, current_password, new_password) => {
+  // Find user
+  const user = await userModel.findById(userId);
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Check if user has a password (not Google-only user)
+  if (!user.password) {
+    const error = new Error('Password change not available for Google accounts');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Verify current password
+  const isCurrentPasswordValid = await bcrypt.compare(current_password, user.password);
+  if (!isCurrentPasswordValid) {
+    const error = new Error('Current password is incorrect');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // Check if new password is different from current password
+  const isNewPasswordSame = await bcrypt.compare(new_password, user.password);
+  if (isNewPasswordSame) {
+    const error = new Error('New password must be different from current password');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Hash new password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(new_password, salt);
+
+  // Update password
+  await userModel.updatePassword(user.id, hashedPassword);
+  
+  return true;
+};
+
+// Change password for authenticated users
+exports.createPassword = async (userId,password) => {
+  // Find user
+  const user = await userModel.findById(userId);
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+  console.log(user);
+  if (user.password) {
+    console.log("here");
+    const error = new Error('You already added a password. Try Reset Password to change it now!');
+    error.statusCode = 400;
+    throw error;
+  }
+  // Hash new password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  // Update password
+  await userModel.updatePassword(user.id, hashedPassword);
+  
+  return true;
+};
+// Delete Google ID from user account
+exports.deleteGoogleId = async (userId, password) => {
+  // Find user
+  const user = await userModel.findById(userId);
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Check if user has a Google ID to delete
+  if (!user.google_id) {
+    const error = new Error('No Google account linked to this profile');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // // Check if user has a password (required to unlink Google)
+  // if (!user.password) {
+  //   const error = new Error('Cannot unlink Google account. Please set a password first');
+  //   error.statusCode = 400;
+  //   throw error;
+  // }
+
+  // Verify password to confirm user identity
+  // const isPasswordValid = await bcrypt.compare(password, user.password);
+  // if (!isPasswordValid) {
+  //   const error = new Error('Password is incorrect');
+  //   error.statusCode = 401;
+  //   throw error;
+  // }
+
+  // Delete Google ID
+  await userModel.deleteGoogleId(userId);
   
   return true;
 };
@@ -303,3 +476,6 @@ exports.resendVerificationEmail = async (email) => {
     message: 'Verification email sent successfully'
   };
 };
+
+
+  
