@@ -287,6 +287,22 @@ exports.getApiKey = async (req, res, next) => {
   }
 };
 
+// Regenerate API key for authenticated user
+exports.regenerateApiKey = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const apiKey = await apiKeyService.regenerateApiKey(userId);
+    res.status(200).json({
+      status: true,
+      status_code: 200,
+      message: 'API key regenerated successfully',
+      data: apiKey
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get all API keys for authenticated user
 exports.getAllApiKeys = async (req, res, next) => {
   try {

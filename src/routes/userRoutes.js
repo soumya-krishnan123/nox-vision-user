@@ -36,6 +36,7 @@ router.post('/google/auth', validateGoogleAuth, userController.googleAuth);
 
 router.post('/create-api-key', auth, userController.createApiKey);
 router.get('/get-api-key', auth, userController.getApiKey);
+router.post('/regenerate-api-key', auth, userController.regenerateApiKey);
 
 // router.get('/google/auth-url', userController.getGoogleAuthUrl);
 // router.get('/google/callback', userController.googleCallback);

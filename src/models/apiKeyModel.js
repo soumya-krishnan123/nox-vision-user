@@ -22,3 +22,13 @@ exports.insertApiKey = async (userId, apiKey) => {
     const { rows } = await db.query(query, [userId]);
     return rows[0];
   };
+
+  exports.deactivateApiKey = async (apiKeyId) => {
+    const query = `
+      UPDATE api_keys
+      SET status = false
+      WHERE id = $1
+    `;
+    await db.query(query, [apiKeyId]);
+  };
+  
