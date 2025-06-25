@@ -23,6 +23,7 @@ exports.login = async (req, res, next) => {
       res.status(200).json({
         status: true,
         status_code: 200,
+        message: 'Login successful',
         data:data
       });
   } catch (error) {
@@ -36,6 +37,7 @@ exports.validateEmail = async (req, res, next) => {
     res.status(200).json({
       status: true,
       status_code: 200,
+      message: 'Email validated successfully',
       data: result
     });
   } catch (error) {
@@ -79,6 +81,7 @@ exports.updateProfile = async (req, res, next) => {
     res.status(200).json({
       status: true,
       status_code: 200,
+      message: 'Profile updated successfully',
       data: updatedUser
     });
   } catch (error) {
@@ -108,6 +111,7 @@ exports.resetPassword = async (req, res, next) => {
     res.status(200).json({
       status: true,
       status_code: 200,
+      data:{},
       message: 'Password has been reset successfully'
     });
   } catch (error) {
@@ -124,6 +128,7 @@ exports.changePassword = async (req, res, next) => {
     res.status(200).json({
       status: true,
       status_code: 200,
+      data:{},
       message: 'Password changed successfully'
     });
   } catch (error) {
@@ -140,6 +145,7 @@ exports.createPassword = async (req, res, next) => {
     res.status(200).json({
       status: true,
       status_code: 200,
+      data:{},
       message: 'Password created successfully'
     });
   } catch (error) {
@@ -154,6 +160,7 @@ exports.deleteGoogleId = async (req, res, next) => {
     res.status(200).json({
       status: true,
       status_code: 200,
+      data:{},
       message: 'Google account unlinked successfully'
     });
   } catch (error) {
@@ -201,7 +208,7 @@ exports.googleAuth = async (req, res, next) => {
       status: true,
       status_code: 200,
       message: 'Google authentication successful',
-      data
+      data:data
     });
   } catch (error) {
     next(error);
@@ -289,6 +296,7 @@ exports.getAllApiKeys = async (req, res, next) => {
     res.status(200).json({
       status: true,
       status_code: 200,
+      message: 'API key fetched successfully',
       data: apiKeys
     });
   } catch (error) {
