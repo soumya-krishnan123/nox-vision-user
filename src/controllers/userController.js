@@ -172,7 +172,7 @@ exports.deleteGoogleId = async (req, res, next) => {
 // Email verification endpoints
 exports.verifyEmail = async (req, res, next) => {
   try {
-    const { token } = req.params;
+    const { token } = req.query;
     const verifiedUser = await userService.verifyEmail(token);
     res.status(200).json({
       status: true,

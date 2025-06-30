@@ -28,7 +28,7 @@ router.post('/create-password', auth, validatePassword, userController.createPas
 router.delete('/google-id', auth, userController.deleteGoogleId);
 
 // Email verification routes
-router.get('/verify-email/:token', userController.verifyEmail);
+router.get('/verify-email', userController.verifyEmail);
 router.post('/resend-verification', validateResendVerification, userController.resendVerificationEmail);
 
 // Google authentication routes
