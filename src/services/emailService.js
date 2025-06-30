@@ -222,36 +222,62 @@ const { verificationEmail,
 const logger = require('../utils/logger');
 const config = require('../config/env');
 const nodemailer = require('nodemailer');
-
+const db = require('../config/db');
 // Create transporter
-const createTransporter = () => nodemailer.createTransport({
-  host: config.SMTP_HOST || 'smtp.gmail.com',
-  port: config.SMTP_PORT || 587,
-  secure: false,
-  auth: {
-    user: config.SMTP_USER,
-    pass: config.SMTP_PASS
-  }
-});
+const getPrimaryMailAccount = async () => {
+  const query = `
+    SELECT * FROM mail_accounts
+    WHERE status = true AND name = 'Primary Gmail'
+    ORDER BY id ASC
+    LIMIT 1
+  `;
+  const { rows } = await db.query(query);
+  return rows[0]; // returns the first active account
+};
 
+// 📬 Create Nodemailer transporter from DB credentials
+const createTransporter = async () => {
+  const account = await getPrimaryMailAccount();
+
+  if (!account) {
+    throw new Error('No active mail account found in database.');
+  }
+
+  return nodemailer.createTransport({
+    host: account.smtp_host,
+    port: account.smtp_port,
+    secure: account.smtp_port === 465, // SSL vs TLS
+    auth: {
+      user: account.smtp_user,
+      pass: account.smtp_pass, // decrypt here if encrypted
+    },
+  });
+};
+
+// 📤 Send Mail Helper
 const sendMail = async ({ to, subject, html }) => {
-  const transporter = createTransporter();
+  const transporter = await createTransporter(); // <-- Await here
+  const account = await getPrimaryMailAccount(); // <-- Needed for "from" email
+console.log(account,'account',to,'to',account.smtp_user,'account.smtp_user');
   const mailOptions = {
-    from: `"${config.APP_NAME}" <${config.SMTP_USER}>`,
+    from: `"${config.APP_NAME}" <${account.smtp_user}>`, // Use DB email here
     to,
     subject,
     html,
   };
+  console.log(`Sending email FROM: ${mailOptions.from} TO: ${mailOptions.to}`);
 
   const info = await transporter.sendMail(mailOptions);
-  logger.info(`Email sent to ${to}: ${info.messageId}`);
-  return true;
+  return info;
 };
+
 
 // Send verification email
 exports.sendVerificationEmail = async (email, token, userName) => {
+  logger.info('Sending verification email to:', email);
   const verificationUrl = `${config.FRONTEND_URL}/verify-email?token=${token}`;
   const html = verificationEmail(userName, verificationUrl);
+  console.log('email in send verification mail',email,userName,'userName');
   return sendMail({ to: email, subject: 'Verify Your Email Address', html });
 };
 

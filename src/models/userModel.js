@@ -1,15 +1,15 @@
 const db = require('../config/db');
 
 exports.create = async (userData) => {
-  const { name, email, password,email_alerts,google_id } = userData;
+  const { name, email, password,email_alerts,google_id,email_verification_token,email_verification_expiry } = userData;
   
   const query = `
-    INSERT INTO users (name, email,password,email_alerts,google_id)
-    VALUES ($1, $2, $3,$4,$5)
+    INSERT INTO users (name, email,password,email_alerts,google_id,email_verification_token,email_verification_expiry)
+    VALUES ($1, $2, $3,$4,$5,$6,$7)
     RETURNING id, name, email, created_at
   `;
   
-  const { rows } = await db.query(query, [name, email, password,email_alerts,google_id]);
+  const { rows } = await db.query(query, [name, email, password,email_alerts,google_id,email_verification_token,email_verification_expiry]);
   return rows[0];
 };
 

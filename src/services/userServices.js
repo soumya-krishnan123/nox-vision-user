@@ -31,8 +31,8 @@ exports.createUser = async (userData) => {
 
   // Generate email verification token
   const verificationToken = crypto.randomBytes(32).toString('hex');
-  const verificationExpiry = Date.now() + 86400000; // 24 hours from now
-
+  const verificationExpiry =new Date( Date.now() + 86400000); // 24 hours from now
+console.log(verificationToken,'verificationToken',verificationExpiry,'verificationExpiry');
   // Create user
   const user = await userModel.create({
     ...userData,
