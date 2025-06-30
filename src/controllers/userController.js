@@ -1,5 +1,6 @@
 const userService = require('../services/userServices');
 const apiKeyService = require('../services/apiKeyService');
+const contactService = require('../services/contactService');
 
 
 exports.register = async (req, res, next) => {
@@ -332,6 +333,22 @@ exports.deactivateApiKey = async (req, res, next) => {
       status_code: 200,
       message: 'API key deactivated successfully',
       data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+}; 
+
+// Contact Us endpoint
+exports.contactUs = async (req, res, next) => {
+  try {
+    const contact = await contactService.createContactRequest(req.body);
+    
+    res.status(201).json({
+      status: true,
+      status_code: 201,
+      message: 'Contact request submitted successfully. We will get back to you soon.',
+      data: contact
     });
   } catch (error) {
     next(error);

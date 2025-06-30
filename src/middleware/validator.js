@@ -181,3 +181,32 @@ exports.validateVerifyOtp = (req, res, next) => {
 
   next();
 };
+
+exports.validateContact = (req, res, next) => {
+  const schema = Joi.object({
+    name: Joi.string().min(2).max(100).required(),
+    email: Joi.string().email().max(150).required(),
+    company: Joi.string().max(150).optional(),
+    services: Joi.array().items(Joi.string()).default([])
+  });
+
+  const { error } = schema.validate(req.body, { abortEarly: false });
+  if (error) {
+    // Create an error object with field names as keys and error messages as values
+    const errorObj = {};
+    error.details.forEach(detail => {
+      const key = detail.path[0];
+      // Capitalize first letter of the error message
+      let message = detail.message.replace(/["]/g, '');
+      message = message.charAt(0).toUpperCase() + message.slice(1);
+      errorObj[key] = message;
+    });
+    
+    return res.status(400).json({
+      status: false,
+      errors: errorObj
+    });
+  }
+
+  next();
+};

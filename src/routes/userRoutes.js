@@ -8,7 +8,8 @@ const {
     validateGoogleAuth,
     validateChangePassword,
     validatePassword,
-    validateVerifyOtp
+    validateVerifyOtp,
+    validateContact
 } = require('../middleware/validator');
 
 const router = express.Router();
@@ -40,5 +41,8 @@ router.post('/regenerate-api-key', auth, userController.regenerateApiKey);
 
 // router.get('/google/auth-url', userController.getGoogleAuthUrl);
 // router.get('/google/callback', userController.googleCallback);
+
+
+router.post('/contact-us', validateContact, userController.contactUs);
 
 module.exports = router;
