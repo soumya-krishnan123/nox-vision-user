@@ -1,10 +1,14 @@
 const userService = require('../services/userServices');
+const apiKeyService = require('../services/apiKeyService');
+const contactService = require('../services/contactService');
+
 
 exports.register = async (req, res, next) => {
   try {
     const user = await userService.createUser(req.body);
-    res.status(201).json({
+    res.status(200).json({
       status: true,
+      status_code: 200,
       message: 'User registered successfully. Please check your email to verify your account.',
       data: user
     });
@@ -17,20 +21,52 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const data = await userService.loginUser(email, password);
+      res.status(200).json({
+        status: true,
+        status_code: 200,
+        message: 'Login successful',
+        data:data
+      });
+  } catch (error) {
+    next(error);
+  }
+};
+exports.validateEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const result = await userService.validateEmail(email);
     res.status(200).json({
       status: true,
-      data
+      status_code: 200,
+      message: 'Email validated successfully',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};  
+
+
+exports.verifyOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    const result = await userService.verifyOtp(email, otp);
+    res.status(200).json({
+      status: true,
+      status_code: 200,
+      message: 'OTP verified successfully',
+      data: result
     });
   } catch (error) {
     next(error);
   }
 };
-
 exports.getProfile = async (req, res, next) => {
   try {
     const user = await userService.getUserById(req.user.id);
     res.status(200).json({
       status: true,
+      status_code: 200,
       data: user
     });
   } catch (error) {
@@ -45,6 +81,8 @@ exports.updateProfile = async (req, res, next) => {
     const updatedUser = await userService.updateUser(userId, userData);
     res.status(200).json({
       status: true,
+      status_code: 200,
+      message: 'Profile updated successfully',
       data: updatedUser
     });
   } catch (error) {
@@ -57,7 +95,8 @@ exports.forgotPassword = async (req, res, next) => {
     const { email } = req.body;
     const result = await userService.generatePasswordResetToken(email);
     res.status(200).json({
-      status: true,
+      status: true, 
+      status_code: 200,
       message: 'Password reset link sent to your email',
       data: result
     });
@@ -68,11 +107,62 @@ exports.forgotPassword = async (req, res, next) => {
 
 exports.resetPassword = async (req, res, next) => {
   try {
-    const { token, newPassword } = req.body;
-    await userService.resetPassword(token, newPassword);
+    const { token, password } = req.body;
+    await userService.resetPassword(token, password);
     res.status(200).json({
       status: true,
+      status_code: 200,
+      data:{},
       message: 'Password has been reset successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Change password for authenticated users
+exports.changePassword = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { current_password, new_password } = req.body;
+    await userService.changePassword(userId, current_password, new_password);
+    res.status(200).json({
+      status: true,
+      status_code: 200,
+      data:{},
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create password for authenticated users
+exports.createPassword = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { password } = req.body;
+    await userService.createPassword(userId,password);
+    res.status(200).json({
+      status: true,
+      status_code: 200,
+      data:{},
+      message: 'Password created successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+// Delete Google ID from user account
+exports.deleteGoogleId = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    await userService.deleteGoogleId(userId);
+    res.status(200).json({
+      status: true,
+      status_code: 200,
+      data:{},
+      message: 'Google account unlinked successfully'
     });
   } catch (error) {
     next(error);
@@ -86,6 +176,7 @@ exports.verifyEmail = async (req, res, next) => {
     const verifiedUser = await userService.verifyEmail(token);
     res.status(200).json({
       status: true,
+      status_code: 200,
       message: 'Email verified successfully',
       data: verifiedUser
     });
@@ -100,6 +191,7 @@ exports.resendVerificationEmail = async (req, res, next) => {
     const result = await userService.resendVerificationEmail(email);
     res.status(200).json({
       status: true,
+      status_code: 200,
       message: 'Verification email sent successfully',
       data: result
     });
@@ -115,36 +207,150 @@ exports.googleAuth = async (req, res, next) => {
     const data = await userService.googleAuth(idToken);
     res.status(200).json({
       status: true,
+      status_code: 200,
       message: 'Google authentication successful',
-      data
+      data:data
     });
   } catch (error) {
     next(error);
   }
 };
 
-exports.getGoogleAuthUrl = async (req, res, next) => {
+
+
+
+
+
+// exports.getGoogleAuthUrl = async (req, res, next) => {
+//   try {
+//     const authUrl = userService.getGoogleAuthUrl();
+//     res.status(200).json({
+//       status: true,
+//       data: { authUrl }
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// exports.googleCallback = async (req, res, next) => {
+//   try {
+//     const { code } = req.query;
+//     const data = await userService.handleGoogleCallback(code);
+//     res.status(200).json({
+//       status: true,
+//       message: 'Google authentication successful',
+//       data
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+
+// Create API key for authenticated user
+exports.createApiKey = async (req, res, next) => {
   try {
-    const authUrl = userService.getGoogleAuthUrl();
-    res.status(200).json({
+    const userId = req.user.id;
+    const apiKey = await apiKeyService.createApiKey(userId);
+    res.status(201).json({
       status: true,
-      data: { authUrl }
+      status_code: 201,
+      message: 'API key created successfully',
+      data: apiKey
     });
   } catch (error) {
     next(error);
   }
 };
 
-exports.googleCallback = async (req, res, next) => {
+// Get API key for authenticated user
+exports.getApiKey = async (req, res, next) => {
   try {
-    const { code } = req.query;
-    const data = await userService.handleGoogleCallback(code);
+    const userId = req.user.id;
+    const apiKey = await apiKeyService.getApiKeyByUserId(userId);
+    
+    if (!apiKey) {
+      return res.status(404).json({
+        status: false,
+        status_code: 404,
+        message: 'No active API key found'
+      });
+    }
+    
     res.status(200).json({
       status: true,
-      message: 'Google authentication successful',
-      data
+      status_code: 200,
+      data: apiKey
     });
   } catch (error) {
     next(error);
   }
 };
+
+// Regenerate API key for authenticated user
+exports.regenerateApiKey = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const apiKey = await apiKeyService.regenerateApiKey(userId);
+    res.status(200).json({
+      status: true,
+      status_code: 200,
+      message: 'API key regenerated successfully',
+      data: apiKey
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all API keys for authenticated user
+exports.getAllApiKeys = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const apiKeys = await apiKeyService.getAllApiKeysByUserId(userId);
+    
+    res.status(200).json({
+      status: true,
+      status_code: 200,
+      message: 'API key fetched successfully',
+      data: apiKeys
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Deactivate API key
+exports.deactivateApiKey = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { apiKeyId } = req.params;
+    const result = await apiKeyService.deactivateApiKey(apiKeyId, userId);
+    
+    res.status(200).json({
+      status: true,
+      status_code: 200,
+      message: 'API key deactivated successfully',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+}; 
+
+// Contact Us endpoint
+exports.contactUs = async (req, res, next) => {
+  try {
+    const contact = await contactService.createContactRequest(req.body);
+    
+    res.status(201).json({
+      status: true,
+      status_code: 201,
+      message: 'Contact request submitted successfully. We will get back to you soon.',
+      data: contact
+    });
+  } catch (error) {
+    next(error);
+  }
+}; 

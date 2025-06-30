@@ -42,7 +42,7 @@ exports.linkGoogleAccount = async (userId, googleId) => {
 
 exports.findByEmail = async (email) => {
   const query = `
-    SELECT id, name, email, password, created_at, google_id, email_alerts, is_email_verified
+    SELECT id, name, email, google_id,is_email_verified,password
     FROM users
     WHERE email = $1
   `;
@@ -64,7 +64,7 @@ exports.findByGoogleId = async (google_id) => {
 
 exports.findById = async (id) => {
   const query = `
-    SELECT id, name, email, created_at, google_id, email_alerts, is_email_verified
+    SELECT id, name, email, created_at, google_id, email_alerts, is_email_verified,password
     FROM users
     WHERE id = $1
   `;
@@ -74,7 +74,7 @@ exports.findById = async (id) => {
 };
 
 exports.update = async (id, userData) => {
-  const allowedFields = ['name'];
+  const allowedFields = ['name','email_alerts','is_email_verified'];
   const updates = [];
   const values = [];
   
@@ -181,4 +181,67 @@ exports.updateVerificationToken = async (userId, token, expiry) => {
   const { rows } = await db.query(query, [token, expiry, userId]);
   return rows[0];
 };
+
+// Delete Google ID from user account
+exports.deleteGoogleId = async (userId) => {
+  const query = `
+    UPDATE users
+    SET google_id = NULL, updated_at = NOW()
+    WHERE id = $1
+    RETURNING id, name, email, google_id, email_alerts, is_email_verified, created_at
+  `;
   
+  const { rows } = await db.query(query, [userId]);
+  return rows[0];
+};
+
+
+exports.storeOtp = async (userId, otp) => {
+  const expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+   let type="login_otp"
+
+  
+  // Check for existing unused and unexpired OTP of same type
+  const existingQuery = `
+    SELECT id FROM otps
+    WHERE user_id = $1 AND type = $2 AND used = false AND expires_at > NOW()
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+
+  const { rows } = await db.query(existingQuery, [userId, type]);
+
+  if (rows.length > 0) {
+    // Update the existing OTP
+    const updateQuery = `
+      UPDATE otps
+      SET otp_code = $1, expires_at = $2, updated_at = NOW()
+      WHERE id = $3
+    `;
+    await db.query(updateQuery, [otp, expires_at, rows[0].id]);
+  } else {
+    // Insert a new OTP
+    const insertQuery = `
+      INSERT INTO otps (user_id, otp_code, expires_at, used, type)
+      VALUES ($1, $2, $3, false, $4)
+    `;
+    await db.query(insertQuery, [userId, otp, expires_at, type]);
+  }
+
+ };
+ exports.findLatestOtp = async (userId, otpCode) => {
+  const query = `
+    SELECT * FROM otps
+    WHERE user_id = $1 AND otp_code = $2 AND used = false
+    LIMIT 1
+  `;
+  const { rows } = await db.query(query, [userId, otpCode]);
+  return rows[0];
+};
+
+exports.markOtpAsUsed = async (otpId) => {
+  const query = `
+    UPDATE otps SET used = true, updated_at = NOW() WHERE id = $1
+  `;
+  await db.query(query, [otpId]);
+};
