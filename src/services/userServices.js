@@ -238,14 +238,14 @@ exports.generatePasswordResetToken = async (email) => {
 
   // Generate reset token
   const resetToken = crypto.randomBytes(32).toString('hex');
-  const resetTokenExpiry = Date.now() + 3600000; // 1 hour from now
-
+  const resetTokenExpiry =  new Date(Date.now() + 86400000);
   // Hash token before storing it
   const hashedToken = crypto
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
 
+  console.log(resetTokenExpiry);
   // Save token to database
   await userModel.saveResetToken(user.id, hashedToken, resetTokenExpiry);
 
