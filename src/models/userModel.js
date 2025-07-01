@@ -108,7 +108,7 @@ exports.update = async (id, userData) => {
 exports.saveResetToken = async (userId, token, expiry) => {
   const query = `
     UPDATE users
-    SET reset_token = $1, reset_token_expiry = to_timestamp($2 / 1000.0)
+    SET reset_token = $1, reset_token_expiry = $2
     WHERE id = $3
     RETURNING id
   `;
