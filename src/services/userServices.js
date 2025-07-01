@@ -271,7 +271,7 @@ exports.resetPassword = async (token, password) => {
 
   // Find user with this token and check if token is still valid
   const user = await userModel.findByResetToken(hashedToken);
-  
+  console.log("user",user);
   if (!user || user.reset_token_expiry < Date.now()) {
     const error = new Error('Invalid or expired token');
     error.statusCode = 400;

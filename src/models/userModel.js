@@ -53,7 +53,7 @@ exports.findByEmail = async (email) => {
 
 exports.findByGoogleId = async (google_id) => {
     const query = `
-      SELECT id, name, email, created_at, google_id, email_alerts, is_email_verified
+      SELECT id, name, email, created_at, google_id, email_alerts, is_email_verified,is_onboarded
       FROM users
       WHERE google_id = $1
     `;
@@ -64,7 +64,7 @@ exports.findByGoogleId = async (google_id) => {
 
 exports.findById = async (id) => {
   const query = `
-    SELECT id, name, email, created_at, google_id, email_alerts, is_email_verified,password,picture_url
+    SELECT id, name, email, created_at, google_id, email_alerts, is_email_verified,password,picture_url,is_onboarded
     FROM users
     WHERE id = $1
   `;
