@@ -85,7 +85,7 @@ exports.validateResendVerification = (req, res, next) => {
 
 exports.validateGoogleAuth = (req, res, next) => {
   const schema = Joi.object({
-    idToken: Joi.string().required()
+    accessToken: Joi.string().required()
   });
 
   const { error } = schema.validate(req.body, { abortEarly: false });
@@ -100,6 +100,33 @@ exports.validateGoogleAuth = (req, res, next) => {
       errorObj[key] = message;
     });
     
+    return res.status(400).json({
+      status: false,
+      errors: errorObj
+    });
+  }
+
+  next();
+};
+
+exports.validateApiKeyBody = (req, res, next) => {
+  const schema = Joi.object({
+    api_key: Joi.string()
+      .guid({ version: ['uuidv4'] }) // Validate UUID format
+      .required()
+  });
+
+  const { error } = schema.validate(req.body, { abortEarly: false });
+
+  if (error) {
+    const errorObj = {};
+    error.details.forEach(detail => {
+      const key = detail.path[0];
+      let message = detail.message.replace(/["]/g, '');
+      message = message.charAt(0).toUpperCase() + message.slice(1);
+      errorObj[key] = message;
+    });
+
     return res.status(400).json({
       status: false,
       errors: errorObj

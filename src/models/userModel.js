@@ -15,15 +15,15 @@ exports.create = async (userData) => {
 
 // Create user with Google authentication (no password required)
 exports.createGoogleUser = async (userData) => {
-  const { name, email, google_id, email_alerts, is_email_verified } = userData;
+  const { name, email, google_id, email_alerts, is_email_verified,picture_url } = userData;
   
   const query = `
-    INSERT INTO users (name, email, google_id, email_alerts, is_email_verified)
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING id, name, email, google_id, email_alerts, is_email_verified, created_at
+    INSERT INTO users (name, email,google_id, email_alerts, is_email_verified,picture_url)
+    VALUES ($1, $2, $3, $4, $5,$6)
+    RETURNING id, name, email, google_id, email_alerts, is_email_verified, created_at,picture_url
   `;
   
-  const { rows } = await db.query(query, [name, email, google_id, email_alerts, is_email_verified]);
+  const { rows } = await db.query(query, [name, email, google_id, email_alerts, is_email_verified,picture_url]);
   return rows[0];
 };
 
@@ -74,7 +74,7 @@ exports.findById = async (id) => {
 };
 
 exports.update = async (id, userData) => {
-  const allowedFields = ['name','email_alerts','is_email_verified'];
+  const allowedFields = ['name','email_alerts','is_email_verified','picture_url'];
   const updates = [];
   const values = [];
   
@@ -244,4 +244,11 @@ exports.markOtpAsUsed = async (otpId) => {
     UPDATE otps SET used = true, updated_at = NOW() WHERE id = $1
   `;
   await db.query(query, [otpId]);
+};
+
+exports.updateOnboardComplete = async (userId) => {
+  const query = `
+    UPDATE users SET is_onboarded= true, updated_at = NOW() WHERE id = $1
+  `;
+  await db.query(query, [userId]);
 };

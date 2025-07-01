@@ -6,6 +6,7 @@ const userModel = require('../models/userModel');
 const emailService = require('./emailService');
 const googleAuthService = require('./googleAuthService');
 const logger = require('../utils/logger');
+const { log } = require('console');
 
 
 
@@ -146,9 +147,11 @@ exports.verifyOtp = async (email, otpCode) => {
 
 
 // Google authentication
-exports.googleAuth = async (idToken) => {
+exports.googleAuth = async (accessToken) => {
   try {
-    const result = await googleAuthService.handleGoogleAuth(idToken);
+    console.log("in service");
+
+    const result = await googleAuthService.handleGoogleAuth(accessToken);
     return result;
   } catch (error) {
     throw error;
@@ -181,25 +184,6 @@ exports.validateEmail = async (email) => {
   delete user.password;
   return {...user,password_available:true};
 };
-// // Get Google OAuth URL
-// exports.getGoogleAuthUrl = () => {
-//   return googleAuthService.getGoogleAuthUrl();
-// };
-
-// // Handle Google OAuth callback
-// exports.handleGoogleCallback = async (code) => {
-//   try {
-//     // Exchange code for tokens
-//     const tokens = await googleAuthService.exchangeCodeForTokens(code);
-    
-//     // Use the ID token to authenticate
-//     const result = await googleAuthService.handleGoogleAuth(tokens.id_token);
-    
-//     return result;
-//   } catch (error) {
-//     throw error;
-//   }
-// };
 
 exports.getUserById = async (userId) => {
   const user = await userModel.findById(userId);
@@ -477,5 +461,19 @@ exports.resendVerificationEmail = async (email) => {
   };
 };
 
-
+exports.onboardComplete = async (userId) => {
+  const user = await userModel.findById(userId);
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+  if(user.is_onboarded){
+    const error = new Error('Onboarding already completed');
+    error.statusCode = 400;
+    throw error;
+  }
+  await userModel.updateOnboardComplete(userId);
+  return true;
+};
   
