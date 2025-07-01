@@ -22,7 +22,9 @@ router.post('/validate-email', userController.validateEmail);
 router.post('/verify-otp', validateVerifyOtp, userController.verifyOtp);
 
 router.get('/profile', auth, userController.getProfile);
-router.put('/profile', auth, upload.single('profile_pic'),userController.updateProfile);
+// router.put('/profile', auth, upload.single('profile_pic'),userController.updateProfile);
+router.put('/profile', auth,userController.updateProfile);
+
 router.post('/forgot-password', userController.forgotPassword);
 router.post('/reset-password', validatePasswordReset, userController.resetPassword);
 router.post('/change-password', auth, validateChangePassword, userController.changePassword);
