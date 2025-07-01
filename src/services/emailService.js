@@ -69,7 +69,7 @@ exports.sendVerificationEmail = async (email, token, userName) => {
 
 // Send password reset email
 exports.sendPasswordResetEmail = async (email, token, userName) => {
-  const resetUrl = `${config.FRONTEND_URL}/reset-password?token=${token}`;
+  const resetUrl = `${config.FRONTEND_URL}/password-confirm?token=${token}`;
   const html = passwordResetEmail(userName, resetUrl);
   return sendMail({ to: email, subject: 'Reset Your Password', html });
 };
