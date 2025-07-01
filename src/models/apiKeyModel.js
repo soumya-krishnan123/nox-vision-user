@@ -16,7 +16,7 @@ exports.insertApiKey = async (userId, apiKey) => {
     const query = `
       SELECT id, api_key, status, created_at
       FROM api_keys
-      WHERE user_id = $1
+      WHERE user_id = $1 AND status = true
       LIMIT 1
     `;
     const { rows } = await db.query(query, [userId]);
@@ -32,3 +32,20 @@ exports.insertApiKey = async (userId, apiKey) => {
     await db.query(query, [apiKeyId]);
   };
   
+  exports.validateApiKey = async (api_key,userId) => {
+    try {
+      console.log("apiKey",api_key);
+      console.log("userId",userId);
+    const query = `
+      SELECT id, api_key, status, created_at
+      FROM api_keys
+      WHERE api_key = $1 AND user_id = $2 AND status = true
+    `;
+    const { rows } = await db.query(query, [api_key,userId]);
+    console.log("rows",rows);
+    return rows[0] || null;
+    } catch (error) {
+      console.log("error",error);
+      throw error;
+    }
+  };

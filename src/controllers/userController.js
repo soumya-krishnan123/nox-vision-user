@@ -2,7 +2,20 @@ const userService = require('../services/userServices');
 const apiKeyService = require('../services/apiKeyService');
 const contactService = require('../services/contactService');
 
+const multer = require('multer');
 
+const storage = multer.memoryStorage(); // store in memory before uploading to S3
+const s3=require('../config/s3upload')
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // max 5 MB
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed'), false);
+    }
+    cb(null, true);
+  }
+});
 exports.register = async (req, res, next) => {
   try {
     const user = await userService.createUser(req.body);
@@ -78,6 +91,11 @@ exports.updateProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const userData = req.body;
+    // Upload profile picture if available
+    if (req.file) {
+      const s3Url = await s3.uploadToS3(req.file.buffer, req.file.originalname, userId);
+      userData.profile_pic = s3Url; // Add to userData
+    }
     const updatedUser = await userService.updateUser(userId, userData);
     res.status(200).json({
       status: true,
@@ -88,6 +106,7 @@ exports.updateProfile = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+  
 };
 
 exports.forgotPassword = async (req, res, next) => {
@@ -172,7 +191,7 @@ exports.deleteGoogleId = async (req, res, next) => {
 // Email verification endpoints
 exports.verifyEmail = async (req, res, next) => {
   try {
-    const { token } = req.params;
+    const { token } = req.query;
     const verifiedUser = await userService.verifyEmail(token);
     res.status(200).json({
       status: true,
@@ -203,49 +222,23 @@ exports.resendVerificationEmail = async (req, res, next) => {
 // Google authentication endpoints
 exports.googleAuth = async (req, res, next) => {
   try {
-    const { idToken } = req.body;
-    const data = await userService.googleAuth(idToken);
+    const { accessToken } = req.body;
+    const data = await userService.googleAuth(accessToken);
+    if(data.user.is_new_user){
+      message="user created Successfully"
+    }else{
+      message="user logged in Successfully"
+    }
     res.status(200).json({
       status: true,
       status_code: 200,
-      message: 'Google authentication successful',
-      data:data
+      message: message,
+      data,
     });
   } catch (error) {
     next(error);
   }
 };
-
-
-
-
-
-
-// exports.getGoogleAuthUrl = async (req, res, next) => {
-//   try {
-//     const authUrl = userService.getGoogleAuthUrl();
-//     res.status(200).json({
-//       status: true,
-//       data: { authUrl }
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-// exports.googleCallback = async (req, res, next) => {
-//   try {
-//     const { code } = req.query;
-//     const data = await userService.handleGoogleCallback(code);
-//     res.status(200).json({
-//       status: true,
-//       message: 'Google authentication successful',
-//       data
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
 
 
 // Create API key for authenticated user
@@ -339,6 +332,23 @@ exports.deactivateApiKey = async (req, res, next) => {
   }
 }; 
 
+exports.validateApiKey = async (req, res, next) => {
+  try {
+    const { api_key } = req.body;
+    const userId = req.user.id;
+    console.log("userId",userId);
+    const result = await apiKeyService.validateApiKey(api_key,userId);
+    res.status(200).json({
+      status: true,
+      status_code: 200,
+      message: 'API key validated successfully',
+      data:result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Contact Us endpoint
 exports.contactUs = async (req, res, next) => {
   try {
@@ -354,3 +364,18 @@ exports.contactUs = async (req, res, next) => {
     next(error);
   }
 }; 
+
+exports.onboardComplete = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const result = await userService.onboardComplete(userId);
+    res.status(200).json({
+      status: true,
+      status_code: 200,
+      message: 'Onboarding completed successfully',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};  

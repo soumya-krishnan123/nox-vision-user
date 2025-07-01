@@ -5,42 +5,48 @@ const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 
 const client = new OAuth2Client(config.GOOGLE_CLIENT_ID);
+// googleAuthService.js
+const axios = require('axios');
 
-// Verify Google ID token
-exports.verifyGoogleToken = async (idToken) => {
+exports.verifyGoogleAccessToken = async (accessToken) => {
   try {
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: config.GOOGLE_CLIENT_ID
-    });
+    const response = await axios.get(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
 
-    const payload = ticket.getPayload();
-    
+    const data = response.data;
+    // console.log(data)
     return {
-      googleId: payload.sub,
-      email: payload.email,
-      name: payload.name,
-      picture: payload.picture,
-      emailVerified: payload.email_verified
+      googleId: data.sub,
+      name: data.name,
+      email: data.email,
+      emailVerified: data.email_verified,
+      picture_url: data.picture,
     };
   } catch (error) {
-    logger.error('Google token verification failed:', error);
-    throw new Error('Invalid Google token');
+    throw new Error('Invalid or expired access token');
   }
 };
 
+
 // Handle Google sign-in/sign-up
-exports.handleGoogleAuth = async (idToken) => {
+exports.handleGoogleAuth = async (accessToken) => {
   try {
+    let is_new_user=false;    
     // Verify the Google token
-    const googleUser = await this.verifyGoogleToken(idToken);
-    
+    const googleUser = await this.verifyGoogleAccessToken(accessToken);
+    console.log("googleUser",googleUser)
     // Check if user already exists with this Google ID
     let user = await userModel.findByGoogleId(googleUser.googleId);
-    
+    console.log(user)
     if (user) {
       // User exists, log them in
-      logger.info(`Google user logged in: ${googleUser.email}`);
+      console.log(`Google user logged in: ${googleUser.email}`);
     } else {
       // Check if user exists with this email but different auth method
       const existingUserByEmail = await userModel.findByEmail(googleUser.email);
@@ -57,11 +63,13 @@ exports.handleGoogleAuth = async (idToken) => {
           email: googleUser.email,
           google_id: googleUser.googleId,
           email_alerts: true, // Default to true for Google users
-          is_email_verified: googleUser.emailVerified // Google emails are pre-verified
+          is_email_verified: googleUser.emailVerified, // Google emails are pre-verified
+          picture_url: googleUser.picture_url
         };
         
         user = await userModel.createGoogleUser(userData);
-        logger.info(`New Google user created: ${googleUser.email}`);
+        is_new_user=true;
+        console.log(`New Google user created: ${googleUser.email}`);
       }
     }
 
@@ -80,7 +88,8 @@ exports.handleGoogleAuth = async (idToken) => {
         google_id: user.google_id,
         email_alerts: user.email_alerts,
         is_email_verified: user.is_email_verified,
-        created_at: user.created_at
+        created_at: user.created_at,
+        is_new_user:is_new_user
       },
       token
     };
@@ -90,21 +99,6 @@ exports.handleGoogleAuth = async (idToken) => {
   }
 };
 
-// // Get Google OAuth URL for frontend
-// exports.getGoogleAuthUrl = () => {
-//   const redirectUri = `${config.FRONTEND_URL}/auth/google/callback`;
-//   const scope = 'email profile';
-  
-//   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-//     `client_id=${config.GOOGLE_CLIENT_ID}&` +
-//     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-//     `response_type=code&` +
-//     `scope=${encodeURIComponent(scope)}&` +
-//     `access_type=offline&` +
-//     `prompt=consent`;
-    
-//   return authUrl;
-// };
 
 // Exchange authorization code for tokens
 exports.exchangeCodeForTokens = async (code) => {
