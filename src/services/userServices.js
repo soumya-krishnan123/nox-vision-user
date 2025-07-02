@@ -187,16 +187,19 @@ exports.validateEmail = async (email) => {
 
 exports.getUserById = async (userId) => {
   const user = await userModel.findById(userId);
+  let password_available=false;
   if (!user) {
     const error = new Error('User not found');
     error.statusCode = 404;
     throw error;
   }
-
+if(user.password){
+ password_available=true;
+}
   // Remove password from response
   delete user.password;
   
-  return user;
+  return {...user,password_available};
 };
 
 exports.updateUser = async (userId, userData) => {
